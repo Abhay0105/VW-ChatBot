@@ -1,0 +1,45 @@
+# Render Blueprint - Deploy both frontend and backend
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Backend API Service
+  - type: web
+    name: chatbot-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false  # You'll set this manually in Render dashboard
+      - key: PYTHON_VERSION
+        value: "3.12"
+      - key: RENDER_DISK_PATH
+        value: /var/data
+      - key: ALLOWED_ORIGINS
+        fromService:
+          name: chatbot-frontend
+          type: web
+          property: host
+    disk:
+      name: chatbot-data
+      mountPath: /var/data
+      sizeGB: 1
+    healthCheckPath: /health
+
+  # Frontend Next.js Service
+  - type: web
+    name: chatbot-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install -g pnpm && pnpm install && pnpm build
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: chatbot-backend
+          type: web
+          property: host
+    healthCheckPath: /
