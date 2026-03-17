@@ -54,11 +54,11 @@ export interface ConversationDetail {
 }
 
 // Use environment variable for API URL in production, fallback to /api for local dev
-// const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-//   ? `https://${process.env.NEXT_PUBLIC_API_URL}` 
-//   : '/api'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL 
+  ? `https://${process.env.NEXT_PUBLIC_API_URL}` 
+  : '/api'
 
-  const API_BASE = '/api'
+  // const API_BASE = '/api'
 
 export async function sendChatMessage(
   message: string,
