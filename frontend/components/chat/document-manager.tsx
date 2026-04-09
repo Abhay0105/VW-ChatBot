@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { FileText, Trash2, Upload, X, AlertCircle, CheckCircle } from 'lucide-react'
+import { FileText, Trash2, Upload, AlertCircle, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Spinner } from '@/components/ui/spinner'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -15,6 +14,16 @@ import {
 } from '@/components/ui/dialog'
 import type { Document } from '@/lib/api'
 import { cn } from '@/lib/utils'
+
+const SUPPORTED_EXTENSIONS = ['.txt', '.md', '.csv', '.pdf', '.docx']
+const SUPPORTED_MIME_TYPES = new Set([
+  'text/plain',
+  'text/markdown',
+  'text/csv',
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+])
+const SUPPORTED_FILE_LABEL = '.txt, .md, .csv, .pdf, and .docx'
 
 interface DocumentManagerProps {
   open: boolean
@@ -31,12 +40,19 @@ export function DocumentManager({
   documents,
   onUpload,
   onDelete,
-  isLoading,
 }: DocumentManagerProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const isSupportedDocument = useCallback((file: File) => {
+    const normalizedName = file.name.toLowerCase()
+    return (
+      SUPPORTED_MIME_TYPES.has(file.type) ||
+      SUPPORTED_EXTENSIONS.some((extension) => normalizedName.endsWith(extension))
+    )
+  }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -48,35 +64,7 @@ export function DocumentManager({
     setIsDragging(false)
   }, [])
 
-  const handleDrop = useCallback(async (e: React.DragEvent) => {
-    e.preventDefault()
-    setIsDragging(false)
-
-    const files = Array.from(e.dataTransfer.files)
-    const textFile = files.find(f => 
-      f.type === 'text/plain' || 
-      f.name.endsWith('.txt') || 
-      f.name.endsWith('.md') ||
-      f.name.endsWith('.csv')
-    )
-
-    if (textFile) {
-      await handleUpload(textFile)
-    } else {
-      setUploadError('Please upload a text file (.txt, .md, or .csv)')
-      setUploadStatus('error')
-    }
-  }, [])
-
-  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      await handleUpload(file)
-    }
-    e.target.value = ''
-  }, [])
-
-  const handleUpload = async (file: File) => {
+  const handleUpload = useCallback(async (file: File) => {
     setUploadStatus('uploading')
     setUploadError(null)
     try {
@@ -87,7 +75,31 @@ export function DocumentManager({
       setUploadError(error instanceof Error ? error.message : 'Upload failed')
       setUploadStatus('error')
     }
-  }
+  }, [onUpload])
+
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+
+    const files = Array.from(e.dataTransfer.files)
+    const supportedFile = files.find(isSupportedDocument)
+
+    if (supportedFile) {
+      await handleUpload(supportedFile)
+      return
+    }
+
+    setUploadError(`Please upload a supported document (${SUPPORTED_FILE_LABEL})`)
+    setUploadStatus('error')
+  }, [handleUpload, isSupportedDocument])
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      await handleUpload(file)
+    }
+    e.target.value = ''
+  }, [handleUpload])
 
   const handleDelete = async (docId: string) => {
     setDeletingId(docId)
@@ -116,8 +128,8 @@ export function DocumentManager({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90dvh] w-full max-w-[calc(100vw-1rem)] flex-col overflow-hidden p-4 sm:max-w-xl sm:p-6">
+        <DialogHeader className="pr-8">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="size-5" />
             Knowledge Base
@@ -128,14 +140,13 @@ export function DocumentManager({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Upload Area */}
+        <div className="flex min-h-0 flex-col gap-4 overflow-hidden">
           <div
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={cn(
-              'relative rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+              'relative rounded-lg border-2 border-dashed p-6 text-center transition-colors sm:p-8',
               isDragging
                 ? 'border-primary bg-primary/5'
                 : 'border-muted-foreground/25 hover:border-primary/50',
@@ -144,12 +155,12 @@ export function DocumentManager({
           >
             <input
               type="file"
-              accept=".txt,.md,.csv,text/plain,text/markdown,text/csv"
+              accept=".txt,.md,.csv,.pdf,.docx,text/plain,text/markdown,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileSelect}
               className="absolute inset-0 cursor-pointer opacity-0"
               disabled={uploadStatus === 'uploading'}
             />
-            
+
             {uploadStatus === 'uploading' ? (
               <div className="flex flex-col items-center gap-2">
                 <Spinner className="size-8" />
@@ -177,39 +188,38 @@ export function DocumentManager({
                 <Upload className="size-8 text-muted-foreground" />
                 <p className="text-sm font-medium">Drop files here or click to upload</p>
                 <p className="text-xs text-muted-foreground">
-                  Supports .txt, .md, and .csv files
+                  Supports {SUPPORTED_FILE_LABEL} files
                 </p>
               </div>
             )}
           </div>
 
-          {/* Document List */}
           {documents.length > 0 ? (
-            <div className="space-y-2">
+            <div className="flex min-h-0 flex-1 flex-col space-y-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-medium">
                   Uploaded Documents ({documents.length})
                 </h3>
               </div>
-              <ScrollArea className="h-200">
+              <ScrollArea className="h-72 max-h-[40vh] sm:h-[28rem]">
                 <div className="space-y-2">
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center gap-3 rounded-lg border bg-card p-3"
+                      className="flex flex-col gap-3 rounded-lg border bg-card p-3 sm:flex-row sm:items-center"
                     >
                       <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                         <FileText className="size-5 text-primary" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium text-sm">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
                           {doc.filename}
                         </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                           <span>{formatSize(doc.total_characters)}</span>
-                          <span>·</span>
+                          <span>|</span>
                           <span>{doc.chunk_count} chunks</span>
-                          <span>·</span>
+                          <span>|</span>
                           <span>{formatDate(doc.uploaded_at)}</span>
                         </div>
                       </div>
@@ -218,6 +228,7 @@ export function DocumentManager({
                         size="icon-sm"
                         onClick={() => handleDelete(doc.id)}
                         disabled={deletingId === doc.id}
+                        className="self-end sm:self-auto"
                       >
                         {deletingId === doc.id ? (
                           <Spinner className="size-4" />

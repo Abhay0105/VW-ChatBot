@@ -28,6 +28,11 @@ from pydantic import BaseModel
 import httpx
 
 from database import init_db
+from document_parser import (
+    DocumentParsingError,
+    MissingDependencyError,
+    extract_text_from_upload,
+)
 from models import (
     create_document,
     get_document,
@@ -126,24 +131,29 @@ async def call_ai_gateway(messages: list[dict], stream: bool = False):
         "stream": stream
     }
     
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        if stream:
-            async with client.stream("POST", url, headers=headers, json=payload) as response:
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            if stream:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        raise HTTPException(status_code=response.status_code, detail=f"AI Gateway error: {error_text.decode()}")
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data = line[6:]
+                            if data.strip() == "[DONE]":
+                                break
+                            yield data
+            else:
+                response = await client.post(url, headers=headers, json=payload)
                 if response.status_code != 200:
-                    error_text = await response.aread()
-                    raise HTTPException(status_code=response.status_code, detail=f"AI Gateway error: {error_text.decode()}")
-                async for line in response.aiter_lines():
-                    if line.startswith("data: "):
-                        data = line[6:]
-                        if data.strip() == "[DONE]":
-                            break
-                        yield data
-        else:
-            response = await client.post(url, headers=headers, json=payload)
-            if response.status_code != 200:
-                raise HTTPException(status_code=response.status_code, detail=f"AI Gateway error: {response.text}")
-            result = response.json()
-            yield result["choices"][0]["message"]["content"]
+                    raise HTTPException(status_code=response.status_code, detail=f"AI Gateway error: {response.text}")
+                result = response.json()
+                yield result["choices"][0]["message"]["content"]
+    except httpx.TimeoutException as exc:
+        raise HTTPException(status_code=504, detail="AI Gateway request timed out") from exc
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=502, detail="Unable to reach AI Gateway") from exc
 
 
 @app.get("/health")
@@ -280,18 +290,27 @@ async def upload_document(
     """Upload a document to the knowledge base with persistent storage."""
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
-    
+    if chunk_size <= 0:
+        raise HTTPException(status_code=400, detail="chunk_size must be greater than 0")
+    if overlap < 0:
+        raise HTTPException(status_code=400, detail="overlap must be 0 or greater")
+    if overlap >= chunk_size:
+        raise HTTPException(status_code=400, detail="overlap must be smaller than chunk_size")
+
     content = await file.read()
     try:
-        text = content.decode("utf-8")
-    except UnicodeDecodeError:
-        raise HTTPException(status_code=400, detail="Could not decode file. Please upload a text file.")
+        text, metadata = extract_text_from_upload(content, file.filename, file.content_type)
+    except MissingDependencyError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    except DocumentParsingError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     
     result = await create_document(
         filename=file.filename,
         content=text,
         chunk_size=chunk_size,
-        overlap=overlap
+        overlap=overlap,
+        metadata=metadata,
     )
     
     return {

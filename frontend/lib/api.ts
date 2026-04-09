@@ -53,12 +53,44 @@ export interface ConversationDetail {
   messages: ChatMessage[]
 }
 
-// Use environment variable for API URL in production, fallback to /api for local dev
-const API_BASE = process.env.NEXT_PUBLIC_API_URL 
-  ? `https://${process.env.NEXT_PUBLIC_API_URL}` 
-  : '/api'
+function resolveApiBase(): string {
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim()
 
-  // const API_BASE = '/api'
+  if (!rawApiUrl) {
+    return '/api'
+  }
+
+  if (/^(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$/i.test(rawApiUrl)) {
+    return '/api'
+  }
+
+  if (/^https?:\/\//i.test(rawApiUrl)) {
+    return rawApiUrl.replace(/\/+$/, '')
+  }
+
+  return `https://${rawApiUrl}`.replace(/\/+$/, '')
+}
+
+const API_BASE = resolveApiBase()
+
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  const rawText = await response.text()
+
+  if (!rawText) {
+    return fallback
+  }
+
+  try {
+    const parsed = JSON.parse(rawText)
+    if (typeof parsed?.detail === 'string') {
+      return parsed.detail
+    }
+  } catch {
+    // Ignore non-JSON error responses.
+  }
+
+  return rawText
+}
 
 export async function sendChatMessage(
   message: string,
@@ -155,8 +187,8 @@ export async function uploadDocument(file: File): Promise<UploadResponse> {
   })
 
   if (!response.ok) {
-    const error = await response.text()
-    throw new Error(`Upload failed: ${error}`)
+    const error = await readErrorMessage(response, 'Upload failed')
+    throw new Error(error)
   }
 
   return response.json()

@@ -9,3 +9,13 @@ node_modules/
 .env*.local
 .DS_Store
 .env
+.venv/
+backend/.deps/
+backend/.tmp/
+__pycache__/
+*.py[cod]
+*.tsbuildinfo
+
+backend/.env
+backend/.env.example
+frontend/.env.local

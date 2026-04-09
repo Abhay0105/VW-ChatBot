@@ -19,7 +19,7 @@ export function ChatMessage({ role, content, sources, isStreaming }: ChatMessage
   return (
     <div
       className={cn(
-        'flex gap-4 px-4 py-6',
+        'flex gap-3 px-3 py-4 sm:gap-4 sm:px-4 sm:py-6',
         isUser ? 'bg-background' : 'bg-muted/30'
       )}
     >
@@ -33,7 +33,7 @@ export function ChatMessage({ role, content, sources, isStreaming }: ChatMessage
       </div>
 
       <div className="flex-1 space-y-3 overflow-hidden">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-medium">
             {isUser ? 'You' : 'Whizzy'}
           </span>
@@ -94,7 +94,7 @@ export function ChatMessage({ role, content, sources, isStreaming }: ChatMessage
         {sources && sources.length > 0 && (
           <div className="mt-4 space-y-2">
             <p className="text-xs font-medium text-muted-foreground">Sources:</p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
               {sources.map((source, index) => (
                 <Badge key={index} variant="outline" className="text-xs">
                   {source.document}

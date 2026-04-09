@@ -17,20 +17,20 @@ const suggestions = [
 
 export function ChatEmpty({ onOpenDocuments, onSuggestionClick }: ChatEmptyProps) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-      <div className="mb-6 flex size-16 items-center justify-center rounded-2xl bg-primary/10">
-        <Bot className="size-8 text-primary" />
+    <div className="flex min-h-full flex-col items-center justify-center px-5 py-8 text-center sm:px-8 sm:py-10">
+      <div className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-primary/10 sm:mb-6 sm:size-16">
+        <Bot className="size-7 text-primary sm:size-8" />
       </div>
 
-      <h2 className="mb-2 text-2xl font-semibold text-balance">
+      <h2 className="mb-2 text-2xl font-semibold text-balance sm:text-3xl">
         Welcome to Whizzy
       </h2>
-      <p className="mb-8 max-w-md text-muted-foreground text-balance">
-        Upload documents to build your knowledge base, then ask questions to get 
+      <p className="mb-6 max-w-md px-2 text-sm text-balance text-muted-foreground sm:mb-8 sm:text-base">
+        Upload documents to build your knowledge base, then ask questions to get
         context-aware responses powered by retrieval-augmented generation.
       </p>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 max-w-2xl">
+      <div className="mb-6 grid w-full max-w-2xl gap-3 sm:mb-8 sm:grid-cols-2 sm:gap-4">
         <div className="flex items-start gap-3 rounded-lg border bg-card p-4 text-left">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <FileText className="size-5 text-primary" />
@@ -38,7 +38,7 @@ export function ChatEmpty({ onOpenDocuments, onSuggestionClick }: ChatEmptyProps
           <div>
             <h3 className="font-medium">Upload Documents</h3>
             <p className="text-sm text-muted-foreground">
-              Add text files to your knowledge base for context-aware responses.
+              Add TXT, MD, CSV, PDF, or DOCX files to your knowledge base for context-aware responses.
             </p>
           </div>
         </div>
@@ -77,7 +77,7 @@ export function ChatEmpty({ onOpenDocuments, onSuggestionClick }: ChatEmptyProps
 
       <Button
         variant="default"
-        className="mt-8"
+        className="mt-6 w-full sm:mt-8 sm:w-auto"
         onClick={onOpenDocuments}
       >
         <FileText className="mr-2 size-4" />

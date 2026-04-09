@@ -31,7 +31,7 @@ export function ChatInput({
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`
     }
   }, [message])
 
@@ -53,10 +53,10 @@ export function ChatInput({
   }
 
   return (
-    <div className="border-t bg-background p-4">
-      <div className="mx-auto max-w-3xl">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="flex items-center gap-2">
+    <div className="shrink-0 border-t bg-background px-3 py-2 sm:px-4 sm:py-2.5">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-2 flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap items-center gap-2.5">
             <Switch
               id="rag-toggle"
               checked={useRag}
@@ -64,7 +64,7 @@ export function ChatInput({
             />
             <label
               htmlFor="rag-toggle"
-              className="text-sm text-muted-foreground cursor-pointer flex items-center gap-1.5"
+              className="flex cursor-pointer items-center gap-1.5 text-sm text-muted-foreground"
             >
               {useRag ? (
                 <>
@@ -79,10 +79,10 @@ export function ChatInput({
               )}
             </label>
           </div>
-          
+
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="text-xs text-muted-foreground cursor-help">
+              <span className="max-w-full cursor-help text-xs text-muted-foreground">
                 {useRag ? 'Using uploaded documents for context' : 'Chatting without document context'}
               </span>
             </TooltipTrigger>
@@ -96,7 +96,7 @@ export function ChatInput({
           </Tooltip>
         </div>
 
-        <div className="relative flex items-end gap-2 rounded-xl border bg-background p-2 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+        <div className="relative flex items-center gap-2 rounded-2xl border bg-background px-2 py-1.5 shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
           {onFileUpload && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -104,7 +104,7 @@ export function ChatInput({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  className="shrink-0"
+                  className="shrink-0 self-center"
                   onClick={onFileUpload}
                   disabled={isLoading}
                 >
@@ -125,17 +125,17 @@ export function ChatInput({
             disabled={isLoading}
             rows={1}
             className={cn(
-              'flex-1 resize-none bg-transparent px-2 py-1.5 text-sm outline-none',
+              'flex-1 resize-none bg-transparent px-2 py-[9px] text-sm leading-5 outline-none',
               'placeholder:text-muted-foreground',
               'disabled:cursor-not-allowed disabled:opacity-50',
-              'min-h-36 max-h-200'
+              'min-h-[24px] max-h-[120px] overflow-y-auto'
             )}
           />
 
           <Button
             type="button"
             size="icon-sm"
-            className="shrink-0"
+            className="shrink-0 self-center"
             onClick={handleSubmit}
             disabled={!message.trim() || isLoading}
           >
@@ -144,7 +144,7 @@ export function ChatInput({
           </Button>
         </div>
 
-        <p className="mt-2 text-center text-xs text-muted-foreground">
+        <p className="mt-1.5 text-center text-xs text-muted-foreground">
           Press Enter to send, Shift+Enter for new line
         </p>
       </div>

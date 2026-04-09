@@ -23,42 +23,44 @@ interface ConversationListProps {
   currentConversationId?: string
   onSelectConversation: (conversationId: string) => void
   onNewConversation: () => void
+  isMobile: boolean
+  width: number
+  onStartResize: (event: React.PointerEvent<HTMLButtonElement>) => void
 }
 
-// Format timestamp in a user-friendly way
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString)
   const now = new Date()
-  
+
   const minutesAgo = differenceInMinutes(now, date)
   const hoursAgo = differenceInHours(now, date)
   const daysAgo = differenceInDays(now, date)
-  
+
   if (minutesAgo < 1) {
     return 'Just now'
   }
-  
+
   if (minutesAgo < 60) {
     return `${minutesAgo} ${minutesAgo === 1 ? 'minute' : 'minutes'} ago`
   }
-  
+
   if (hoursAgo < 24 && isToday(date)) {
     return `${hoursAgo} ${hoursAgo === 1 ? 'hour' : 'hours'} ago`
   }
-  
+
   if (isYesterday(date)) {
     return `Yesterday at ${format(date, 'h:mm a')}`
   }
-  
+
   if (daysAgo < 7) {
-    return format(date, 'EEEE') // Day name like "Monday"
+    return format(date, 'EEEE')
   }
-  
+
   if (daysAgo < 365) {
-    return format(date, 'MMM d') // "Jan 15"
+    return format(date, 'MMM d')
   }
-  
-  return format(date, 'MMM d, yyyy') // "Jan 15, 2024"
+
+  return format(date, 'MMM d, yyyy')
 }
 
 export function ConversationList({
@@ -67,10 +69,13 @@ export function ConversationList({
   currentConversationId,
   onSelectConversation,
   onNewConversation,
+  isMobile,
+  width,
+  onStartResize,
 }: ConversationListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [, setTick] = useState(0) // Used to force re-render for time updates
+  const [, setTick] = useState(0)
 
   const loadConversations = useCallback(async () => {
     setIsLoading(true)
@@ -90,14 +95,13 @@ export function ConversationList({
     }
   }, [open, loadConversations])
 
-  // Update timestamps every minute for real-time display
   useEffect(() => {
     if (!open || conversations.length === 0) return
-    
+
     const interval = setInterval(() => {
-      setTick(t => t + 1)
-    }, 60000) // Update every minute
-    
+      setTick((tick) => tick + 1)
+    }, 60000)
+
     return () => clearInterval(interval)
   }, [open, conversations.length])
 
@@ -105,7 +109,7 @@ export function ConversationList({
     e.stopPropagation()
     try {
       await clearConversation(conversationId)
-      setConversations(prev => prev.filter(c => c.id !== conversationId))
+      setConversations((prev) => prev.filter((conversation) => conversation.id !== conversationId))
       if (currentConversationId === conversationId) {
         onNewConversation()
       }
@@ -114,42 +118,8 @@ export function ConversationList({
     }
   }
 
-  if (!open) {
-    return (
-      <div className="flex h-full w-12 flex-col items-center border-r bg-muted/30 py-3">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onOpenChange(true)}
-              className="mb-2"
-            >
-              <History className="size-5" />
-              <span className="sr-only">Open history</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">Chat history</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onNewConversation}
-            >
-              <Plus className="size-5" />
-              <span className="sr-only">New chat</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">New chat</TooltipContent>
-        </Tooltip>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex h-full w-64 flex-col border-r bg-muted/30">
+  const sidebarContent = (
+    <>
       <div className="flex items-center justify-between border-b px-3 py-3">
         <h2 className="text-sm font-semibold">Chat History</h2>
         <div className="flex items-center gap-1">
@@ -239,11 +209,11 @@ export function ConversationList({
                     <TooltipContent>Delete conversation</TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="flex w-full items-center justify-between text-xs text-muted-foreground">
-                  <span className="truncate max-w-140">
+                <div className="flex w-full flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                  <span className="max-w-full truncate">
                     {conversation.last_message || 'No messages'}
                   </span>
-                  <span className="shrink-0 ml-2">
+                  <span className="shrink-0">
                     {formatRelativeTime(conversation.updated_at)}
                   </span>
                 </div>
@@ -252,6 +222,79 @@ export function ConversationList({
           )}
         </div>
       </ScrollArea>
-    </div>
+    </>
+  )
+
+  if (isMobile) {
+    if (!open) {
+      return null
+    }
+
+    return (
+      <>
+        <button
+          type="button"
+          aria-label="Close chat history"
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => onOpenChange(false)}
+        />
+        <aside className="fixed inset-y-0 left-0 z-50 flex h-[100dvh] w-[85vw] max-w-sm flex-col border-r bg-background shadow-xl md:hidden">
+          {sidebarContent}
+        </aside>
+      </>
+    )
+  }
+
+  if (!open) {
+    return (
+      <div className="hidden h-full w-14 flex-col items-center border-r bg-muted/30 py-3 md:flex">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(true)}
+              className="mb-2"
+            >
+              <History className="size-5" />
+              <span className="sr-only">Open history</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Chat history</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onNewConversation}
+            >
+              <Plus className="size-5" />
+              <span className="sr-only">New chat</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right">New chat</TooltipContent>
+        </Tooltip>
+      </div>
+    )
+  }
+
+  return (
+    <aside
+      className="relative hidden h-full shrink-0 md:flex"
+      style={{ width }}
+    >
+      <div className="flex h-full w-full min-w-0 flex-col border-r bg-muted/30">
+        {sidebarContent}
+      </div>
+      <button
+        type="button"
+        aria-label="Resize chat history sidebar"
+        onPointerDown={onStartResize}
+        className="group absolute inset-y-0 -right-2 z-10 hidden w-4 cursor-col-resize md:flex"
+      >
+        <span className="mx-auto h-16 w-1 rounded-full bg-border transition-colors group-hover:bg-primary/40" />
+      </button>
+    </aside>
   )
 }
